@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <databases>
+        <from>
+            <host>localhost</host>
+            <username>root</username>
+            <password>password</password>
+            <database>flexologist_migration_from</database>
+        </from>
+
+        <to>
+            <host>localhost</host>
+            <username>root</username>
+            <password>password</password>
+            <database>flexologist_migration_to</database>
+        </to>
+    </databases>
+
+    <migrations>
+        <migration>
+            <from table="users"/>
+            <to table="members"/>
+
+            <transformations>
+                <field from="username" to="username"/>
+                <field from="firstName" to="name"/>
+                <field from="lastName" to="surname"/>
+                <field from="age" to="age"/>
+            </transformations>
+        </migration>
+    </migrations>
+</configuration>
