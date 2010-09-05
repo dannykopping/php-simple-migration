@@ -8,19 +8,21 @@
 	 */
 	class Migration
 	{
+		private $config;
+
 		private $fromConn;
 		private $toConn;
 
 		public function __construct()
 		{
-			$config = $this->readConfig("config.xml");
-			$parsed = $this->parse($config);
+			$this->config = $this->readConfig("config.xml");
+			$this->config = $this->parse($this->config);
 
-			$from = $parsed["from"];
+			$from = $this->config["from"];
 			$this->fromConn = $this->getConnection($from["host"], $from["username"],
 													$from["password"], $from["database"], "mysql");
 
-			$to = $parsed["to"];
+			$to = $this->config["to"];
 			$this->toConn = $this->getConnection($to["host"], $to["username"],
 													$to["password"], $to["database"], "mysql");
 		}
@@ -61,7 +63,8 @@
 				{
 					$migration["transformations"][] = array(
 								"from" => (string) $transform["from"],
-								"to" => (string) $transform["to"]	
+								"to" => (string) $transform["to"],
+								"type" => strtolower((string) $transform["type"])
 					);
 				}
 
@@ -101,7 +104,80 @@
 
 		public function migrate()
 		{
-			
+			foreach($this->config["migrations"] as $migration)
+			{
+				$fromTable = $migration["from"];
+				$toTable = $migration["to"];
+
+				$transformFields = array();
+
+				foreach($migration["transformations"] as $transform)
+					$transformFields[$transform["from"]] = array(
+						"field" => $transform["to"], "type" => $transform["type"]
+					);
+
+				$select = "SELECT ".join(", ", array_keys($transformFields))." FROM $fromTable";
+				$stmt = $this->fromConn->query($select);
+
+				$fromRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+				foreach($fromRecords as $record)
+					$this->transformAndInsert($toTable, $record, $transformFields);
+			}
+		}
+
+		private function transformAndInsert($table, $record, $transformFields)
+		{
+			$fields = array();
+			$bindings = array();
+
+			foreach($transformFields as $key => $value)
+			{
+				$oldField = $key;
+				$newField = $transformFields[$key]["field"];
+
+				$fields[] = $newField;
+				$bindings[] = ":$oldField";
+			}
+
+			$bindings = join(", ", $bindings);
+			$fields = join(", ", $fields);
+
+			$insert = "INSERT INTO $table ($fields) VALUES ($bindings)";
+			$stmt = $this->toConn->prepare($insert);
+
+			foreach($transformFields as $key => $value)
+			{
+				$oldField = $key;
+				$type = $transformFields[$key]["type"];
+
+				$stmt->bindParam(":$oldField", $record[$oldField], $this->getPDOType($type));
+			}
+
+			$stmt->execute();
+		}
+
+		private function getPDOType($type)
+		{
+			switch($type)
+			{
+				case "string":
+					$type = PDO::PARAM_STR;
+				default:
+					break;
+				case "int":
+					$type = PDO::PARAM_INT;
+					break;
+				case "boolean":
+					$type = PDO::PARAM_BOOL;
+					break;
+				case "blob":
+				case "clob":
+					$type = PDO::PARAM_LOB;
+					break;
+			}
+
+			return $type;
 		}
 	}
 

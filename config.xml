@@ -3,15 +3,15 @@
     <databases>
         <from>
             <host>localhost</host>
-            <username>root</username>
-            <password>password</password>
+            <username>flexologist</username>
+            <password>flexologist</password>
             <database>flexologist_migration_from</database>
         </from>
 
         <to>
             <host>localhost</host>
-            <username>root</username>
-            <password>password</password>
+            <username>flexologist</username>
+            <password>flexologist</password>
             <database>flexologist_migration_to</database>
         </to>
     </databases>
@@ -22,10 +22,10 @@
             <to table="members"/>
 
             <transformations>
-                <field from="username" to="username"/>
-                <field from="firstName" to="name"/>
-                <field from="lastName" to="surname"/>
-                <field from="age" to="age"/>
+                <field from="username" to="username" type="string"/>
+                <field from="firstName" to="name" type="string"/>
+                <field from="lastName" to="surname" type="string"/>
+                <field from="age" to="age" type="int"/>
             </transformations>
         </migration>
     </migrations>
