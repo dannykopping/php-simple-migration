@@ -27,6 +27,9 @@
                 <field from="lastName" to="surname" type="string"/>
                 <field from="age" to="age" type="int"/>
             </transformations>
+
+            <!-- Available types-->
+            <!-- string, int, boolean, blob, clob -->
         </migration>
     </migrations>
 </configuration>

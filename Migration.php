@@ -13,6 +13,14 @@
 		private $fromConn;
 		private $toConn;
 
+		private $successCount = 0;
+		private $failCount = 0;
+
+		/**
+		 * Initiate the migration by connection to "from" and "to" databases
+		 *
+		 * @return void
+		 */
 		public function __construct()
 		{
 			$this->config = $this->readConfig("config.xml");
@@ -27,6 +35,12 @@
 													$to["password"], $to["database"], "mysql");
 		}
 
+		/**
+		 * Reads the configuration file
+		 *
+		 * @param  $path
+		 * @return string
+		 */
 		private function readConfig($path)
 		{
 			$f = fopen($path, "r");
@@ -35,6 +49,12 @@
 			return $contents;
 		}
 
+		/**
+		 * Parses the configuration file
+		 *
+		 * @param  $config
+		 * @return array
+		 */
 		private function parse($config)
 		{
 			$config = new SimpleXMLElement($config);
@@ -74,6 +94,12 @@
 			return $parsed;
 		}
 
+		/**
+		 * Converts XML child nodes to an associative array
+		 *
+		 * @param  $node
+		 * @return array
+		 */
 		private function childrenToAssoc($node)
 		{
 			$node = new SimpleXMLElement($node->asXML());
@@ -87,6 +113,16 @@
 			return $assoc;
 		}
 
+		/**
+		 * Returns a PDO connection based on connection details
+		 *
+		 * @param  $hostname
+		 * @param  $username
+		 * @param  $password
+		 * @param  $database
+		 * @param string $engine
+		 * @return PDO
+		 */
 		private function getConnection($hostname, $username, $password, $database, $engine="mysql")
 		{
 			try
@@ -102,8 +138,16 @@
 			}
 		}
 
+		/**
+		 * Performs the migration
+		 *
+		 * @return void
+		 */
 		public function migrate()
 		{
+			$this->successCount = 0;
+			$this->failCount = 0;
+
 			foreach($this->config["migrations"] as $migration)
 			{
 				$fromTable = $migration["from"];
@@ -124,6 +168,12 @@
 				foreach($fromRecords as $record)
 					$this->transformAndInsert($toTable, $record, $transformFields);
 			}
+
+			echo "-------------------------";
+			echo "Migration details:\n";
+			echo "{$this->successCount} rows successfully migrated\n";
+			echo "{$this->failCount} rows failed to migrate\n";
+			echo "-------------------------";
 		}
 
 		private function transformAndInsert($table, $record, $transformFields)
@@ -154,9 +204,24 @@
 				$stmt->bindParam(":$oldField", $record[$oldField], $this->getPDOType($type));
 			}
 
-			$stmt->execute();
+			try
+			{
+				$stmt->execute();
+				$this->successCount++;
+			}
+			catch(PDOException $error)
+			{
+				echo $error->getMessage()."\n";
+				$this->failCount++;
+			}
 		}
 
+		/**
+		 * Gets the correct PDO type
+		 *
+		 * @param  $type
+		 * @return int
+		 */
 		private function getPDOType($type)
 		{
 			switch($type)
@@ -179,8 +244,22 @@
 
 			return $type;
 		}
+
+		/**
+		 * Closes connections to databases
+		 *
+		 * @return void
+		 */
+		public function closeConnections()
+		{
+			$this->fromConn = null;
+			$this->toConn = null;
+		}
 	}
+
+	// IMPLEMENTATION
 
 	$migration = new Migration();
 	$migration->migrate();
+	$migration->closeConnections();
 ?>
